@@ -230,6 +230,10 @@ private:
 	uint8_t* ExtByte(uint16_t address);
 	void ExtRenderMode7B();
 
+public:
+	string ExtDump();
+
+private:
 	void UpdateOamAddress();
 	uint16_t GetOamAddress();
 

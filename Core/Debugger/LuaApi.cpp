@@ -28,6 +28,8 @@
 #include "Shared/BaseControlManager.h"
 #include "Utilities/HexUtilities.h"
 #include "Utilities/FolderUtilities.h"
+#include "SNES/SnesConsole.h"
+#include "SNES/SnesPpu.h"
 #include "Utilities/magic_enum.hpp"
 
 #ifdef _MSC_VER
@@ -151,6 +153,7 @@ int LuaApi::GetLibrary(lua_State* lua)
 		{ "clearCheats", LuaApi::ClearCheats },
 
 		{ "createSavestate", LuaApi::CreateSavestate },
+		{ "getExtensionMemory", LuaApi::GetExtensionMemory },
 		{ "loadSavestate", LuaApi::LoadSavestate },
 
 		{ "getState", LuaApi::GetState },
@@ -1155,6 +1158,17 @@ int LuaApi::ClearCheats(lua_State* lua)
 	LuaCallHelper l(lua);
 	checkparams();
 	_emu->GetCheatManager()->InternalClearCheats();
+	return l.ReturnCount();
+}
+
+//mesen-tmnt4p (debug): the extension memories as one string: extra OBJ tiles ($4000 bytes),
+//extended OAM (544), attributes (64), extra palettes (256), second Mode 7 layer ($90)
+int LuaApi::GetExtensionMemory(lua_State* lua)
+{
+	LuaCallHelper l(lua);
+	SnesConsole* console = dynamic_cast<SnesConsole*>(_emu->GetConsoleUnsafe());
+	errorCond(console == nullptr, "SNES only");
+	l.Return(console->GetPpu()->ExtDump());
 	return l.ReturnCount();
 }
 

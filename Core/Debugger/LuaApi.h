@@ -74,6 +74,7 @@ public:
 	static int TakeScreenshot(lua_State* lua);
 
 	static int CreateSavestate(lua_State* lua);
+	static int GetExtensionMemory(lua_State* lua);
 	static int LoadSavestate(lua_State* lua);
 
 	static int IsKeyPressed(lua_State* lua);

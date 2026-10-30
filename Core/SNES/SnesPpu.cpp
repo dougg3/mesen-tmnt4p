@@ -970,6 +970,18 @@ uint8_t* SnesPpu::ExtByte(uint16_t address)
 	return nullptr;
 }
 
+//mesen-tmnt4p: the extension memories as one string, in port address order (Lua getExtensionMemory)
+string SnesPpu::ExtDump()
+{
+	string s;
+	s.append((char*)_extVram, sizeof(_extVram));
+	s.append((char*)_extOam, sizeof(_extOam));
+	s.append((char*)_extAttr, sizeof(_extAttr));
+	s.append((char*)_extCgram, sizeof(_extCgram));
+	s.append((char*)_extM7b, sizeof(_extM7b));
+	return s;
+}
+
 void SnesPpu::RenderMode0()
 {
 	constexpr uint8_t spritePriorities[4] = { 3, 6, 9, 12 };
@@ -2749,6 +2761,15 @@ void SnesPpu::Serialize(Serializer& s)
 	SVArray(_extAttr, 64);
 	SVArray(_extCgram, 128);
 	SVArray(_extM7b, 0x90);
+	if(s.GetFormat() == SerializeFormat::Map) {
+		//Lua getState/debugger only: map format leaves out arrays over 64 elements
+		for(int i = 0; i < 9; i++) {
+			uint32_t count = std::min<uint32_t>(64, SnesPpu::SpriteRamSize - i * 64);
+			s.StreamArray(_extOam + i * 64, count, ("extOamPart" + std::to_string(i) + "_").c_str());
+		}
+		s.StreamArray(_extCgram, 64, "extCgramPart0_");
+		s.StreamArray(_extCgram + 64, 64, "extCgramPart1_");
+	}
 	SVArray(_cgram, SnesPpu::CgRamSize >> 1);
 
 	if(s.GetFormat() != SerializeFormat::Map) {
