@@ -30,6 +30,18 @@ SnesPpu::SnesPpu(Emulator* emu, SnesConsole* console)
 	_emu->RegisterMemory(MemoryType::SnesSpriteRam, _oamRam, SnesPpu::SpriteRamSize);
 	_emu->RegisterMemory(MemoryType::SnesCgRam, _cgram, SnesPpu::CgRamSize);
 
+	//mesen-tmnt4p: MESEN_TMNT4P_EXT=0 in the environment turns the extensions off entirely
+#ifdef _MSC_VER
+	char* extEnv = nullptr;
+	size_t extLen = 0;
+	_dupenv_s(&extEnv, &extLen, "MESEN_TMNT4P_EXT");
+	_extAvailable = !(extEnv && extEnv[0] == '0');
+	free(extEnv);
+#else
+	const char* extEnv = getenv("MESEN_TMNT4P_EXT");
+	_extAvailable = !(extEnv && extEnv[0] == '0');
+#endif
+
 	_outputBuffers[0] = new uint16_t[512 * 478];
 	_outputBuffers[1] = new uint16_t[512 * 478];
 	memset(_outputBuffers[0], 0, 512 * 478 * sizeof(uint16_t));
@@ -75,6 +87,7 @@ void SnesPpu::PowerOn()
 
 void SnesPpu::Reset()
 {
+	_extControl = 0;
 	_scanline = 0;
 	_state.ForcedBlank = true;
 	_oddFrame = 0;
@@ -708,9 +721,12 @@ void SnesPpu::FetchSpritePosition(uint8_t spriteIndex)
 	static constexpr uint8_t oamHeight[16] = { 8, 8, 8, 16, 16, 32, 32, 32, 16, 32, 64, 32, 64, 64, 64, 32 };
 	static constexpr uint16_t sign[2] = { 0x0000, 0xFF00 };
 
-	uint8_t highTableValue = _oamRam[0x200 | (spriteIndex >> 2)] >> ((spriteIndex << 1) & 0x06);
-	_currentSprite.X = (int16_t)(sign[highTableValue & 0x01] | _oamRam[(spriteIndex << 2)]);
-	_currentSprite.Y = _oamRam[(spriteIndex << 2) + 1];
+	//mesen-tmnt4p: entries 128-255 are in the extended OAM (only reached when it is enabled)
+	const uint8_t* oam = (spriteIndex & 0x80) ? _extOam : _oamRam;
+	uint8_t entry = spriteIndex & 0x7F;
+	uint8_t highTableValue = oam[0x200 | (entry >> 2)] >> ((entry << 1) & 0x06);
+	_currentSprite.X = (int16_t)(sign[highTableValue & 0x01] | oam[(entry << 2)]);
+	_currentSprite.Y = oam[(entry << 2) + 1];
 
 	uint8_t mode = _state.OamMode | ((highTableValue & 0x02) << 2);
 	_currentSprite.Width = oamWidth[mode];
@@ -733,9 +749,25 @@ void SnesPpu::FetchSpriteAttributes(uint16_t oamAddress)
 		_timeOver = true;
 	}
 
-	uint8_t flags = _oamRam[oamAddress + 1];
+	const uint8_t* oam = _oamRam;
+	if(oamAddress & 0x200) {
+		//mesen-tmnt4p: extended OAM entry
+		oam = _extOam;
+		oamAddress &= 0x1FF;
+	}
+
+	uint8_t flags = oam[oamAddress + 1];
 	bool useSecondTable = (flags & 0x01) != 0;
 	_currentSprite.Palette = (flags >> 1) & 0x07;
+	_currentSprite.ExtPage = false;
+	if(_extControl & 0x01) {
+		//mesen-tmnt4p: extended attributes: bit 0 = tile from the extra OBJ memory, bit 1 = palettes 8-15
+		uint8_t ext = (_extAttr[_currentSprite.Index >> 2] >> ((_currentSprite.Index & 0x03) << 1)) & 0x03;
+		_currentSprite.ExtPage = (ext & 0x01) != 0;
+		if(ext & 0x02) {
+			_currentSprite.Palette |= 0x08;
+		}
+	}
 	_currentSprite.Priority = (flags >> 4) & 0x03;
 	_currentSprite.HorizontalMirror = (flags & 0x40) != 0;
 
@@ -768,13 +800,17 @@ void SnesPpu::FetchSpriteAttributes(uint16_t oamAddress)
 	}
 
 	uint8_t columnCount = (_currentSprite.Width / 8);
-	uint8_t tileRow = (_oamRam[oamAddress] & 0xF0) >> 4;
-	uint8_t tileColumn = _oamRam[oamAddress] & 0x0F;
+	uint8_t tileRow = (oam[oamAddress] & 0xF0) >> 4;
+	uint8_t tileColumn = oam[oamAddress] & 0x0F;
 	uint8_t row = (tileRow + rowOffset) & 0x0F;
 	uint8_t columnOffset = _currentSprite.HorizontalMirror ? _currentSprite.ColumnOffset : (columnCount - _currentSprite.ColumnOffset - 1);
 	uint8_t tileIndex = (row << 4) | ((tileColumn + columnOffset) & 0x0F);
 	uint16_t tileStart = (_state.OamBaseAddress + (tileIndex << 4) + (useSecondTable ? _state.OamAddressOffset : 0));
 	_currentSprite.FetchAddress = (tileStart + yOffset) & 0x7FFF;
+	if(_currentSprite.ExtPage) {
+		//mesen-tmnt4p: 512 tiles (16 KB) in the extra OBJ memory, tile = table bit * 256 + name
+		_currentSprite.FetchAddress = ((((useSecondTable ? 0x100 : 0) | tileIndex) << 4) + yOffset) & 0x1FFF;
+	}
 
 	int16_t x = _currentSprite.X == -256 ? 0 : _currentSprite.X;
 	int16_t endTileX = x + ((columnCount - _currentSprite.ColumnOffset - 1) << 3) + 8;
@@ -790,7 +826,7 @@ void SnesPpu::FetchSpriteAttributes(uint16_t oamAddress)
 void SnesPpu::FetchSpriteTile(bool secondCycle)
 {
 	//The timing for the fetches should be (mostly) accurate (H=272 to 339)
-	uint16_t chrData = _vram[_currentSprite.FetchAddress];
+	uint16_t chrData = _currentSprite.ExtPage ? _extVram[_currentSprite.FetchAddress & 0x1FFF] : _vram[_currentSprite.FetchAddress];
 	_currentSprite.ChrData[secondCycle] = chrData;
 
 	if(!secondCycle) {
@@ -849,6 +885,79 @@ void SnesPpu::LoadExtraSprites()
 	}
 
 	_timeOver = timeOver;
+}
+
+//mesen-tmnt4p: evaluate OAM entries 0-127 (with the priority rotation) and then
+//the extended entries 128-255, keep up to 32 (128 with raised limits) in range, fetch up
+//to 34 (256) tiles in the same order as FetchSpriteData (last in range first, so lower
+//entries win).
+void SnesPpu::ExtLoadPosition(uint8_t index)
+{
+	_currentSprite.Index = index ^ 0x01; //force FetchSpritePosition to restart the sprite
+	FetchSpritePosition(index);
+}
+
+void SnesPpu::ExtFetchSprites()
+{
+	_spriteFetchingDone = true;
+	memset(_spritePriorityCopy, 0xFF, sizeof(_spritePriorityCopy));
+	if(_state.ForcedBlank) {
+		return;
+	}
+
+	bool raised = (_extControl & 0x02) != 0;
+	int maxSprites = raised ? 128 : 32;
+	int maxTiles = raised ? 256 : 34;
+	uint8_t list[128];
+	int count = 0;
+	uint8_t first = _state.EnableOamPriority ? ((_state.InternalOamAddress & 0x1FC) >> 2) : 0;
+	for(int n = 0; n < 256; n++) {
+		uint8_t index = n < 128 ? ((first + n) & 0x7F) : n;
+		ExtLoadPosition(index);
+		if(_currentSprite.IsVisible(_scanline, _state.ObjInterlace)) {
+			if(count < maxSprites) {
+				list[count++] = index;
+			} else {
+				_rangeOver = true;
+			}
+		}
+	}
+
+	_spriteTileCount = 0;
+	int tiles = 0;
+	for(int n = count - 1; n >= 0; n--) {
+		ExtLoadPosition(list[n]);
+		while(_currentSprite.ColumnOffset > 0) {
+			if(tiles == maxTiles) {
+				_timeOver = true;
+				break;
+			}
+			_spriteCount = 1;
+			FetchSpriteAttributes((list[n] << 2) | 0x02);
+			FetchSpriteTile(false);
+			FetchSpriteTile(true);
+			tiles++;
+		}
+	}
+	_spriteCount = 0;
+}
+
+//mesen-tmnt4p: extension port address space (byte addresses, $21C0/$21C1):
+//  $0000-$3FFF extra OBJ tile memory (512 tiles), $4000-$421F extended OAM (entries
+//  128-255, same layout as OAM), $4300-$433F extended attributes (2 bits per entry
+//  0-255), $4400-$44FF extra OBJ palettes 8-15 (128 colours)
+uint8_t* SnesPpu::ExtByte(uint16_t address)
+{
+	if(address < 0x4000) {
+		return (uint8_t*)_extVram + address;
+	} else if(address >= 0x4000 && address < 0x4000 + SnesPpu::SpriteRamSize) {
+		return _extOam + (address - 0x4000);
+	} else if(address >= 0x4300 && address < 0x4340) {
+		return _extAttr + (address - 0x4300);
+	} else if(address >= 0x4400 && address < 0x4500) {
+		return (uint8_t*)_extCgram + (address - 0x4400);
+	}
+	return nullptr;
 }
 
 void SnesPpu::RenderMode0()
@@ -984,11 +1093,16 @@ void SnesPpu::RenderScanline()
 	if(hPos >= 270 && !_spriteFetchingDone) {
 		//Fetch sprite data from OAM and calculated which CHR data needs to be loaded (between H=270 and H=337)
 		//Fetch sprite CHR data, as needed, between H=272 and H=339
-		_fetchSpriteEnd = std::min(hPos - 270, 69);
-		if(_fetchSpriteStart <= _fetchSpriteEnd) {
-			FetchSpriteData();
+		if(_extControl & 0x01) {
+			//mesen-tmnt4p: extended sprites, whole line at once
+			ExtFetchSprites();
+		} else {
+			_fetchSpriteEnd = std::min(hPos - 270, 69);
+			if(_fetchSpriteStart <= _fetchSpriteEnd) {
+				FetchSpriteData();
+			}
+			_fetchSpriteStart = _fetchSpriteEnd + 1;
 		}
-		_fetchSpriteStart = _fetchSpriteEnd + 1;
 	}
 }
 
@@ -1029,15 +1143,15 @@ void SnesPpu::RenderSprites(const uint8_t priority[4])
 	for(int x = _drawStartX; x <= _drawEndX; x++) {
 		if(_spritePriority[x] <= 3) {
 			uint8_t spritePrio = priority[_spritePriority[x]];
+			//mesen-tmnt4p: palettes 8-15 come from the extra OBJ palettes (colour math as palettes 0-7)
+			uint8_t palette = _spritePalette[x];
 			if(drawMain && ((_mainScreenFlags[x] & 0x0F) < spritePrio) && !ProcessMaskWindow<SnesPpu::SpriteLayerIndex>(mainWindowCount, x)) {
-				uint16_t paletteRamOffset = 128 + (_spritePalette[x] << 4) + _spriteColors[x];
-				_mainScreenBuffer[x] = _cgram[paletteRamOffset];
-				_mainScreenFlags[x] = spritePrio | (((_state.ColorMathEnabled & 0x10) && _spritePalette[x] > 3) ? PixelFlags::AllowColorMath : 0);
+				_mainScreenBuffer[x] = palette < 8 ? _cgram[128 + (palette << 4) + _spriteColors[x]] : _extCgram[((palette & 0x07) << 4) + _spriteColors[x]];
+				_mainScreenFlags[x] = spritePrio | (((_state.ColorMathEnabled & 0x10) && (palette & 0x07) > 3) ? PixelFlags::AllowColorMath : 0);
 			}
 
 			if(drawSub && (_subScreenPriority[x] < spritePrio) && !ProcessMaskWindow<SnesPpu::SpriteLayerIndex>(subWindowCount, x)) {
-				uint16_t paletteRamOffset = 128 + (_spritePalette[x] << 4) + _spriteColors[x];
-				_subScreenBuffer[x] = _cgram[paletteRamOffset];
+				_subScreenBuffer[x] = palette < 8 ? _cgram[128 + (palette << 4) + _spriteColors[x]] : _extCgram[((palette & 0x07) << 4) + _spriteColors[x]];
 				_subScreenPriority[x] = spritePrio;
 			}
 		}
@@ -1972,6 +2086,26 @@ uint8_t SnesPpu::Read(uint16_t addr)
 			return value;
 		}
 
+		//mesen-tmnt4p: extension port (open bus when the extensions are off)
+		case 0x21C3:
+			if(_extAvailable) {
+				uint8_t* b = ExtByte(_extAddress);
+				_extAddress++;
+				return b ? *b : 0;
+			}
+			break;
+
+		case 0x21CE:
+			if(_extAvailable) {
+				return 'S';
+			}
+			break;
+		case 0x21CF:
+			if(_extAvailable) {
+				return '+';
+			}
+			break;
+
 		default:
 			LogDebug("[Debug] Unimplemented register read: " + HexUtilities::ToHex(addr));
 			break;
@@ -2363,6 +2497,33 @@ void SnesPpu::Write(uint32_t addr, uint8_t value)
 			break;
 		}
 
+		//mesen-tmnt4p: extension port: $21C0/$21C1 address, $21C2 data (address +1), $21C4 control
+		//(bit 0 extended sprites, bit 1 raised per-line limits)
+		case 0x21C0:
+			if(_extAvailable) {
+				_extAddress = (_extAddress & 0xFF00) | value;
+			}
+			break;
+		case 0x21C1:
+			if(_extAvailable) {
+				_extAddress = (_extAddress & 0x00FF) | (value << 8);
+			}
+			break;
+		case 0x21C2:
+			if(_extAvailable) {
+				uint8_t* b = ExtByte(_extAddress);
+				if(b) {
+					*b = value;
+				}
+				_extAddress++;
+			}
+			break;
+		case 0x21C4:
+			if(_extAvailable) {
+				_extControl = value & 0x03;
+			}
+			break;
+
 		default:
 			LogDebug("[Debug] Unimplemented register write: " + HexUtilities::ToHex(addr) + " = " + HexUtilities::ToHex(value));
 			break;
@@ -2475,6 +2636,12 @@ void SnesPpu::Serialize(Serializer& s)
 
 	SVArray(_vram, SnesPpu::VideoRamSize >> 1);
 	SVArray(_oamRam, SnesPpu::SpriteRamSize);
+	SV(_extControl);
+	SV(_extAddress);
+	SVArray(_extVram, 0x2000);
+	SVArray(_extOam, SnesPpu::SpriteRamSize);
+	SVArray(_extAttr, 64);
+	SVArray(_extCgram, 128);
 	SVArray(_cgram, SnesPpu::CgRamSize >> 1);
 
 	if(s.GetFormat() != SerializeFormat::Map) {

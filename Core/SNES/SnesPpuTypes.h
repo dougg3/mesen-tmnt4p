@@ -33,6 +33,7 @@ struct SpriteInfo
 
 	int16_t DrawX;
 	uint16_t FetchAddress;
+	bool ExtPage; //mesen-tmnt4p: tile from the extra OBJ tile memory
 	uint16_t ChrData[2];
 
 	bool IsVisible(uint16_t scanline, bool interlace)

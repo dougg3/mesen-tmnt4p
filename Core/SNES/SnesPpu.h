@@ -72,6 +72,15 @@ private:
 	uint16_t _cgram[SnesPpu::CgRamSize >> 1] = {};
 	uint8_t _oamRam[SnesPpu::SpriteRamSize] = {};
 
+	//mesen-tmnt4p: extensions (inert until a ROM switches them on with $21C4; see Write)
+	bool _extAvailable = true;
+	uint8_t _extControl = 0;
+	uint16_t _extAddress = 0;
+	uint16_t _extVram[0x2000] = {};
+	uint8_t _extOam[SnesPpu::SpriteRamSize] = {};
+	uint8_t _extAttr[64] = {};
+	uint16_t _extCgram[128] = {};
+
 	uint16_t* _outputBuffers[2] = {};
 	uint16_t* _currentBuffer = nullptr;
 	bool _useHighResOutput = false;
@@ -213,6 +222,9 @@ private:
 	void FetchSpriteAttributes(uint16_t oamAddress);
 	void FetchSpriteTile(bool secondCycle);
 	void LoadExtraSprites();
+	void ExtFetchSprites();
+	void ExtLoadPosition(uint8_t index);
+	uint8_t* ExtByte(uint16_t address);
 
 	void UpdateOamAddress();
 	uint16_t GetOamAddress();
