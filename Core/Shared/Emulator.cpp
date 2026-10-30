@@ -172,6 +172,14 @@ void Emulator::Run()
 			ProcessSystemActions();
 		}
 
+		if(!_pendingMovie.empty()) {
+			//mesen-tmnt4p: movie requested by a script (LuaApi::PlayMovie): from its save
+			//state on the running console, no power cycle (that would unload the scripts)
+			string movie = _pendingMovie;
+			_pendingMovie.clear();
+			_movieManager->Play(VirtualFile(movie), true, true);
+		}
+
 		ProcessAutoSaveState();
 
 		WaitForLock();

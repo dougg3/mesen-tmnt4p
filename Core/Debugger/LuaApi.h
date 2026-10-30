@@ -72,6 +72,12 @@ public:
 	static int Rewind(lua_State* lua);
 
 	static int TakeScreenshot(lua_State* lua);
+	static int StartVideoRecording(lua_State* lua);
+	static int StopVideoRecording(lua_State* lua);
+	static int StartMovieRecording(lua_State* lua);
+	static int StopMovie(lua_State* lua);
+	static int PlayMovie(lua_State* lua);
+	static int IsMoviePlaying(lua_State* lua);
 
 	static int CreateSavestate(lua_State* lua);
 	static int GetExtensionMemory(lua_State* lua);

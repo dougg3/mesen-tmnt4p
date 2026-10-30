@@ -128,6 +128,7 @@ private:
 	double _frameDelay = 0;
 
 	uint32_t _autoSaveStateFrameCounter = 0;
+	string _pendingMovie; //mesen-tmnt4p: movie to play between frames (Lua playMovie)
 	int32_t _stopCode = 0;
 	bool _stopRequested = false;
 
@@ -233,6 +234,10 @@ public:
 	BatteryManager* GetBatteryManager() { return _batteryManager.get(); }
 	CheatManager* GetCheatManager() { return _cheatManager.get(); }
 	MovieManager* GetMovieManager() { return _movieManager.get(); }
+	//mesen-tmnt4p: play a movie (recorded from a save state) after the current frame,
+	//without a power cycle; scripts call this, not MovieManager::Play
+	void RequestMoviePlay(string filename) { _pendingMovie = filename; }
+	bool IsMoviePlayPending() { return !_pendingMovie.empty(); }
 	HistoryViewer* GetHistoryViewer() { return _historyViewer.get(); }
 	GameServer* GetGameServer() { return _gameServer.get(); }
 	GameClient* GetGameClient() { return _gameClient.get(); }

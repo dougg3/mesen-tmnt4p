@@ -33,6 +33,7 @@ protected:
 	bool _forTest = false;
 	bool _loadFailure = false;
 	bool _hasSaveState = false;
+	bool _noPowerCycle = false; //mesen-tmnt4p: see SetNoPowerCycle
 
 	void ParseSettings(stringstream& data);
 	virtual bool ApplySettings(istream& settingsData);
@@ -50,6 +51,10 @@ public:
 
 	bool Play(VirtualFile& file) override;
 	void Stop() override;
+
+	//mesen-tmnt4p: a movie that starts from a save state, played on the ROM already
+	//running, without the power cycle (it would also unload the Lua scripts)
+	void SetNoPowerCycle(bool noPowerCycle) { _noPowerCycle = noPowerCycle; }
 
 	bool SetInput(BaseControlDevice* device) override;
 	bool IsPlaying() override;

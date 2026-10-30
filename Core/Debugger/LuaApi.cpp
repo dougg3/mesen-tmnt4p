@@ -31,6 +31,10 @@
 #include "SNES/SnesConsole.h"
 #include "SNES/SnesPpu.h"
 #include "Utilities/magic_enum.hpp"
+#include "Utilities/Video/AviWriter.h"
+#include "Utilities/VirtualFile.h"
+#include "Shared/Movies/MovieManager.h"
+#include "Shared/Movies/MovieTypes.h"
 
 #ifdef _MSC_VER
 	//TODO MSVC seems to trigger this by mistake because of the macros?
@@ -138,6 +142,12 @@ int LuaApi::GetLibrary(lua_State* lua)
 		{ "rewind", LuaApi::Rewind },
 
 		{ "takeScreenshot", LuaApi::TakeScreenshot },
+		{ "startVideoRecording", LuaApi::StartVideoRecording },
+		{ "stopVideoRecording", LuaApi::StopVideoRecording },
+		{ "startMovieRecording", LuaApi::StartMovieRecording },
+		{ "stopMovie", LuaApi::StopMovie },
+		{ "playMovie", LuaApi::PlayMovie },
+		{ "isMoviePlaying", LuaApi::IsMoviePlaying },
 
 		{ "isKeyPressed", LuaApi::IsKeyPressed },
 		{ "getPressedKeys", LuaApi::GetPressedKeys },
@@ -836,6 +846,81 @@ int LuaApi::DisplayMessage(lua_State* lua)
 	checkparams();
 	MessageManager::DisplayMessage(category, text);
 	return l.ReturnCount();
+}
+
+//mesen-tmnt4p: video (AVI, ZMBV, with sound) from a script, as Tools > Video Recorder
+int LuaApi::StartVideoRecording(lua_State* lua)
+{
+	LuaCallHelper l(lua);
+	string filename = l.ReadString();
+	checkparams();
+	errorCond(filename.empty(), "a file name is required");
+	RecordAviOptions options = {};
+	options.Codec = VideoCodec::ZMBV;
+	options.CompressionLevel = 6;
+	options.RecordSystemHud = false;
+	options.RecordInputHud = false;
+	_emu->GetVideoRenderer()->StartRecording(filename, options);
+	lua_pushboolean(lua, _emu->GetVideoRenderer()->IsRecording());
+	return 1;
+}
+
+int LuaApi::StopVideoRecording(lua_State* lua)
+{
+	LuaCallHelper l(lua);
+	checkparams();
+	_emu->GetVideoRenderer()->StopRecording();
+	return l.ReturnCount();
+}
+
+//mesen-tmnt4p: Mesen movies (.mmo) from a script, as Tools > Movies. Recording starts
+//from the current state (a save state in the movie, then every frame's input after the
+//scripts' inputPolled callbacks); call it from a CPU exec callback, as createSavestate.
+int LuaApi::StartMovieRecording(lua_State* lua)
+{
+	LuaCallHelper l(lua);
+	string filename = l.ReadString();
+	checkparams();
+	errorCond(filename.empty(), "a file name is required");
+	RecordMovieOptions options = {};
+	filename.copy(options.Filename, sizeof(options.Filename) - 1);
+	options.RecordFrom = RecordMovieFrom::CurrentState;
+	_emu->GetMovieManager()->Record(options);
+	lua_pushboolean(lua, _emu->GetMovieManager()->Recording());
+	return 1;
+}
+
+int LuaApi::StopMovie(lua_State* lua)
+{
+	LuaCallHelper l(lua);
+	checkparams();
+	_emu->GetMovieManager()->Stop();
+	return l.ReturnCount();
+}
+
+//The run loop starts the movie after the current frame, from its save state, without
+//a power cycle (Emulator::RequestMoviePlay). Returns false if the file doesn't exist.
+int LuaApi::PlayMovie(lua_State* lua)
+{
+	LuaCallHelper l(lua);
+	string filename = l.ReadString();
+	checkparams();
+	errorCond(filename.empty(), "a file name is required");
+	bool exists = VirtualFile(filename).IsValid();
+	if(exists) {
+		_emu->RequestMoviePlay(filename);
+	}
+	lua_pushboolean(lua, exists);
+	return 1;
+}
+
+//True while a movie plays or is about to (requested by playMovie)
+int LuaApi::IsMoviePlaying(lua_State* lua)
+{
+	LuaCallHelper l(lua);
+	checkparams();
+	lua_pushboolean(lua, _emu->GetMovieManager()->Playing() || _emu->IsMoviePlayPending());
+	return 1;
 }
 
 int LuaApi::Reset(lua_State* lua)

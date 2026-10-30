@@ -42,7 +42,9 @@ void MesenMovie::Stop()
 		}
 
 		EmuSettings* settings = _emu->GetSettings();
-		if(isEndOfMovie && settings->GetPreferences().PauseOnMovieEnd) {
+		//mesen-tmnt4p: not for a script's movie (no power cycle): its script ends the run
+		//at the movie's end, which a pause would stop from happening
+		if(isEndOfMovie && settings->GetPreferences().PauseOnMovieEnd && !_noPowerCycle) {
 			_emu->PauseOnNextFrame();
 		}
 
@@ -189,6 +191,14 @@ bool MesenMovie::Play(VirtualFile& file)
 
 	if(!ApplySettings(_settingsData)) {
 		return false;
+	}
+
+	if(_noPowerCycle && _hasSaveState) {
+		//mesen-tmnt4p: what follows the power cycle (load the movie's save state, feed
+		//its input from poll 0), on the console already running
+		ProcessNotification(ConsoleNotificationType::AfterInitConsole, nullptr);
+		_playing = !_loadFailure;
+		return _playing;
 	}
 
 	_emu->GetBatteryManager()->SetBatteryProvider(shared_from_this());

@@ -24,7 +24,7 @@ void MovieManager::Record(RecordMovieOptions options)
 	}
 }
 
-void MovieManager::Play(VirtualFile file, bool forTest)
+void MovieManager::Play(VirtualFile file, bool forTest, bool noPowerCycle)
 {
 	vector<uint8_t> fileData;
 	if(file.IsValid() && file.ReadFile(fileData)) {
@@ -36,7 +36,9 @@ void MovieManager::Play(VirtualFile file, bool forTest)
 
 			vector<string> files = reader.GetFileList();
 			if(std::find(files.begin(), files.end(), "GameSettings.txt") != files.end()) {
-				player.reset(new MesenMovie(_emu, forTest));
+				shared_ptr<MesenMovie> movie(new MesenMovie(_emu, forTest));
+				movie->SetNoPowerCycle(noPowerCycle);
+				player = movie;
 			} else if(std::find(files.begin(), files.end(), "Input Log.txt") != files.end()) {
 				player.reset(new BizHawkMovie(_emu, false));
 			}

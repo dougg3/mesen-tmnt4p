@@ -30,7 +30,7 @@ public:
 	MovieManager(Emulator* emu);
 
 	void Record(RecordMovieOptions options);
-	void Play(VirtualFile file, bool silent = false);
+	void Play(VirtualFile file, bool silent = false, bool noPowerCycle = false);
 	void Stop();
 	bool Playing();
 	bool Recording();
