@@ -174,11 +174,25 @@ void VideoDecoder::WaitForAsyncFrameDecode()
 	}
 }
 
+#ifdef MESEN_TMNT4P_EMBED
+//mesen-tmnt4p: a front end that copies the PPU's frame buffer itself (the browser build) sets this:
+//the decode thread's work (and the emulation thread spinning until it is done, below) is wasted
+bool VideoDecoderSkipDecode = false;
+#endif
+
 void VideoDecoder::UpdateFrame(RenderedFrame frame, bool sync, bool forRewind)
 {
 	if(_emu->IsRunAheadFrame()) {
 		return;
 	}
+
+#ifdef MESEN_TMNT4P_EMBED
+	if(VideoDecoderSkipDecode) {
+		_emu->OnBeforeSendFrame();
+		_frameCount++;
+		return;
+	}
+#endif
 
 	if(_frameChanged) {
 		//Last frame isn't done decoding yet - sometimes Signal() introduces a 25-30ms delay

@@ -295,6 +295,16 @@ void Emulator::ProcessEndOfFrame()
 {
 	bool useSpinWait = !_settings->GetVideoConfig().DisableHighPrecisionFramePacing && (_settings->GetEmulationSpeed() >= 50 && _settings->GetEmulationSpeed() <= 200);
 
+#ifdef MESEN_TMNT4P_EMBED
+	//mesen-tmnt4p: a front end that embeds the core (the browser build) takes the emulator lock
+	//before LoadRom and runs every frame itself (replayable sessions), so Run() never creates
+	//the frame limiter; the front end paces
+	if(!_isRunAheadFrame && !_frameLimiter) {
+		_console->GetControlManager()->ProcessEndOfFrame();
+		_frameRunning = false;
+		return;
+	}
+#endif
 	if(!_isRunAheadFrame) {
 		_frameLimiter->ProcessFrame();
 		while(_frameLimiter->WaitForNextFrame(useSpinWait)) {

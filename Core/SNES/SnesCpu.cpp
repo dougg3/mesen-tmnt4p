@@ -11,6 +11,14 @@
 #include "SNES/SnesCpu.Shared.h"
 #include "Shared/MemoryOperationType.h"
 
+#if !defined(DUMMYCPU) && defined(MESEN_TMNT4P_EMBED)
+//mesen-tmnt4p: for a front end that embeds the core (the browser build): called before the
+//instruction at SnesExecHookAddr runs, like a Lua exec callback there, without the debugger
+//(which costs ~5 ms per frame in WebAssembly)
+void (*SnesExecHook)(uint16_t y) = nullptr;
+uint32_t SnesExecHookAddr = 0;
+#endif
+
 #ifndef DUMMYCPU
 SnesCpu::SnesCpu(SnesConsole* console)
 {
@@ -33,6 +41,11 @@ void SnesCpu::Exec()
 	if(_state.StopState == SnesCpuStopState::Running) {
 #ifndef DUMMYCPU
 		_emu->ProcessInstruction<CpuType::Snes>();
+	#ifdef MESEN_TMNT4P_EMBED
+		if(SnesExecHook && (((uint32_t)_state.K << 16) | _state.PC) == SnesExecHookAddr) {
+			SnesExecHook(_state.Y);
+		}
+	#endif
 #endif
 
 		RunOp();
