@@ -82,6 +82,7 @@ private:
 	uint8_t _extOam[SnesPpu::SpriteRamSize] = {};
 	uint8_t _extAttr[64] = {};
 	uint16_t _extCgram[128] = {};
+	uint8_t _extM7b[0x90] = {};
 
 	uint16_t* _outputBuffers[2] = {};
 	uint16_t* _currentBuffer = nullptr;
@@ -227,6 +228,7 @@ private:
 	void ExtFetchSprites();
 	void ExtLoadPosition(uint8_t index);
 	uint8_t* ExtByte(uint16_t address);
+	void ExtRenderMode7B();
 
 	void UpdateOamAddress();
 	uint16_t GetOamAddress();

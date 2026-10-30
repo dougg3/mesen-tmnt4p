@@ -952,7 +952,8 @@ void SnesPpu::ExtFetchSprites()
 //mesen-tmnt4p: extension port address space (byte addresses, $21C0/$21C1):
 //  $0000-$3FFF extra OBJ tile memory (512 tiles), $4000-$421F extended OAM (entries
 //  128-255, same layout as OAM), $4300-$433F extended attributes (2 bits per entry
-//  0-255), $4400-$44FF extra OBJ palettes 8-15 (128 colours)
+//  0-255), $4400-$44FF extra OBJ palettes 8-15 (128 colours), $4600-$468F second
+//  Mode 7 layer
 uint8_t* SnesPpu::ExtByte(uint16_t address)
 {
 	if(address < 0x4000) {
@@ -963,6 +964,8 @@ uint8_t* SnesPpu::ExtByte(uint16_t address)
 		return _extAttr + (address - 0x4300);
 	} else if(address >= 0x4400 && address < 0x4500) {
 		return (uint8_t*)_extCgram + (address - 0x4400);
+	} else if(address >= 0x4600 && address < 0x4690) {
+		return _extM7b + (address - 0x4600);
 	}
 	return nullptr;
 }
@@ -1042,8 +1045,91 @@ void SnesPpu::RenderMode7()
 	RenderSprites(spritePriorities);
 
 	RenderTilemapMode7<0, 3, 3>();
+	if(_extControl & 0x04) {
+		//mesen-tmnt4p: second Mode 7 layer, behind BG1
+		ExtRenderMode7B();
+	}
 	if(_state.ExtBgEnabled) {
 		RenderTilemapMode7<1, 1, 5>();
+	}
+}
+
+//mesen-tmnt4p: a second Mode 7 layer ("M7B") drawn from the same Mode 7 map and tiles as
+//BG1, behind BG1 (BG1's priority, drawn after it so BG1 pixels win), with BG1's
+//screen, window and color math settings, M7SEL and center (M7X/M7Y). Two parameter
+//sets: set 0 for lines < split, set 1 for the others (port $4600 = split; sets at
+//$4610 and $4650, $40 bytes each). A set: matrix A, B, C, D, H/V scroll (+$00-$0B,
+//16-bit little endian, as the Mode 7 registers), color override mask (+$10, bit n:
+//color n comes from the set's own colors), flags (+$12: bit 0 set enabled, bit 1
+//screen mirrored horizontally), 16 colors (+$20).
+void SnesPpu::ExtRenderMode7B()
+{
+	bool drawMain = (bool)(((_state.MainScreenLayers & _configVisibleLayers) >> 0) & 0x01);
+	bool drawSub = (bool)(((_state.SubScreenLayers & _configVisibleLayers) >> 0) & 0x01);
+	if(!drawMain && !drawSub) {
+		return;
+	}
+	uint8_t* set = _extM7b + (_scanline < _extM7b[0] ? 0x10 : 0x50);
+	if(!(set[0x12] & 0x01)) {
+		return;
+	}
+	auto word = [set](int i) { return (int32_t)(int16_t)(set[i] | (set[i + 1] << 8)); };
+	auto clip = [](int32_t val) { return (val & 0x2000) ? (val | ~0x3ff) : (val & 0x3ff); };
+	int32_t a = word(0), b = word(2), c = word(4), d = word(6);
+	int32_t hScroll = (word(8) << 19) >> 19;
+	int32_t vScroll = (word(10) << 19) >> 19;
+	int32_t centerX = ((int32_t)_state.Mode7.CenterX << 19) >> 19;
+	int32_t centerY = ((int32_t)_state.Mode7.CenterY << 19) >> 19;
+	uint16_t mask = set[0x10] | (set[0x11] << 8);
+	uint16_t realY = _state.Mode7.VerticalMirroring ? (255 - _scanline) : _scanline;
+
+	uint8_t mainWindowCount = _state.WindowMaskMain[0] ? (uint8_t)_state.Window[0].ActiveLayers[0] + (uint8_t)_state.Window[1].ActiveLayers[0] : 0;
+	uint8_t subWindowCount = _state.WindowMaskSub[0] ? (uint8_t)_state.Window[0].ActiveLayers[0] + (uint8_t)_state.Window[1].ActiveLayers[0] : 0;
+	uint8_t pixelFlags = (_state.ColorMathEnabled & 0x01) ? PixelFlags::AllowColorMath : 0;
+	constexpr uint8_t priority = 3;
+
+	int32_t xValue = ((a * clip(hScroll - centerX)) & ~63) + ((b * realY) & ~63) + ((b * clip(vScroll - centerY)) & ~63) + (centerX << 8);
+	int32_t yValue = ((c * clip(hScroll - centerX)) & ~63) + ((d * realY) & ~63) + ((d * clip(vScroll - centerY)) & ~63) + (centerY << 8);
+	int32_t xStep = a, yStep = c;
+	if(_state.Mode7.HorizontalMirroring != ((set[0x12] & 0x02) != 0)) {
+		xValue += xStep * 255;
+		yValue += yStep * 255;
+		xStep = -xStep;
+		yStep = -yStep;
+	}
+	xValue += xStep * _drawStartX;
+	yValue += yStep * _drawStartX;
+
+	for(int x = _drawStartX; x <= _drawEndX; x++) {
+		int32_t xOffset = xValue >> 8;
+		int32_t yOffset = yValue >> 8;
+		xValue += xStep;
+		yValue += yStep;
+
+		uint8_t tileIndex;
+		if(!_state.Mode7.LargeMap) {
+			yOffset &= 0x3FF;
+			xOffset &= 0x3FF;
+			tileIndex = (uint8_t)_vram[((yOffset & ~0x07) << 4) | (xOffset >> 3)];
+		} else if(yOffset < 0 || yOffset > 0x3FF || xOffset < 0 || xOffset > 0x3FF) {
+			if(!_state.Mode7.FillWithTile0) {
+				continue;
+			}
+			tileIndex = 0;
+		} else {
+			tileIndex = (uint8_t)_vram[((yOffset & ~0x07) << 4) | (xOffset >> 3)];
+		}
+		uint8_t colorIndex = _vram[((tileIndex << 6) + ((yOffset & 0x07) << 3) + (xOffset & 0x07))] >> 8;
+		if(colorIndex == 0) {
+			continue;
+		}
+		uint16_t color = (colorIndex < 16 && (mask >> colorIndex) & 0x01) ? (uint16_t)(set[0x20 + colorIndex * 2] | (set[0x21 + colorIndex * 2] << 8)) : _cgram[colorIndex];
+		if(drawMain && (_mainScreenFlags[x] & 0x0F) < priority && !ProcessMaskWindow<0>(mainWindowCount, x)) {
+			DrawMainPixel(x, color, priority | pixelFlags);
+		}
+		if(drawSub && _subScreenPriority[x] < priority && !ProcessMaskWindow<0>(subWindowCount, x)) {
+			DrawSubPixel(x, color, priority);
+		}
 	}
 }
 
@@ -2505,7 +2591,7 @@ void SnesPpu::Write(uint32_t addr, uint8_t value)
 		}
 
 		//mesen-tmnt4p: extension port: $21C0/$21C1 address, $21C2 data (address +1), $21C4 control
-		//(bit 0 extended sprites, bit 1 raised per-line limits),
+		//(bit 0 extended sprites, bit 1 raised per-line limits, bit 2 second Mode 7 layer),
 		//$21C5/$21C6 extra scanlines before/after NMI
 		case 0x21C0:
 			if(_extAvailable) {
@@ -2528,7 +2614,7 @@ void SnesPpu::Write(uint32_t addr, uint8_t value)
 			break;
 		case 0x21C4:
 			if(_extAvailable) {
-				_extControl = value & 0x03;
+				_extControl = value & 0x07;
 			}
 			break;
 		case 0x21C5:
@@ -2662,6 +2748,7 @@ void SnesPpu::Serialize(Serializer& s)
 	SVArray(_extOam, SnesPpu::SpriteRamSize);
 	SVArray(_extAttr, 64);
 	SVArray(_extCgram, 128);
+	SVArray(_extM7b, 0x90);
 	SVArray(_cgram, SnesPpu::CgRamSize >> 1);
 
 	if(s.GetFormat() != SerializeFormat::Map) {
