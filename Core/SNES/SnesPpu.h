@@ -75,6 +75,8 @@ private:
 	//mesen-tmnt4p: extensions (inert until a ROM switches them on with $21C4; see Write)
 	bool _extAvailable = true;
 	uint8_t _extControl = 0;
+	uint8_t _extBeforeNmi = 0;
+	uint8_t _extAfterNmi = 0;
 	uint16_t _extAddress = 0;
 	uint16_t _extVram[0x2000] = {};
 	uint8_t _extOam[SnesPpu::SpriteRamSize] = {};

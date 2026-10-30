@@ -88,6 +88,8 @@ void SnesPpu::PowerOn()
 void SnesPpu::Reset()
 {
 	_extControl = 0;
+	_extBeforeNmi = 0;
+	_extAfterNmi = 0;
 	_scanline = 0;
 	_state.ForcedBlank = true;
 	_oddFrame = 0;
@@ -596,6 +598,11 @@ void SnesPpu::UpdateNmiScanline()
 		beforeNmi = 0;
 		afterNmi = 0;
 	}
+
+	//mesen-tmnt4p: extra (invisible) scanlines requested by the ROM ($21C5/$21C6),
+	//on top of the emulator's own settings; take effect from the next frame
+	beforeNmi += _extBeforeNmi;
+	afterNmi += _extAfterNmi;
 
 	_overclockEnabled = beforeNmi > 0 || afterNmi > 0;
 	_adjustedVblankEndScanline = _baseVblankEndScanline + beforeNmi;
@@ -2498,7 +2505,8 @@ void SnesPpu::Write(uint32_t addr, uint8_t value)
 		}
 
 		//mesen-tmnt4p: extension port: $21C0/$21C1 address, $21C2 data (address +1), $21C4 control
-		//(bit 0 extended sprites, bit 1 raised per-line limits)
+		//(bit 0 extended sprites, bit 1 raised per-line limits),
+		//$21C5/$21C6 extra scanlines before/after NMI
 		case 0x21C0:
 			if(_extAvailable) {
 				_extAddress = (_extAddress & 0xFF00) | value;
@@ -2521,6 +2529,16 @@ void SnesPpu::Write(uint32_t addr, uint8_t value)
 		case 0x21C4:
 			if(_extAvailable) {
 				_extControl = value & 0x03;
+			}
+			break;
+		case 0x21C5:
+			if(_extAvailable) {
+				_extBeforeNmi = value;
+			}
+			break;
+		case 0x21C6:
+			if(_extAvailable) {
+				_extAfterNmi = value;
 			}
 			break;
 
@@ -2637,6 +2655,8 @@ void SnesPpu::Serialize(Serializer& s)
 	SVArray(_vram, SnesPpu::VideoRamSize >> 1);
 	SVArray(_oamRam, SnesPpu::SpriteRamSize);
 	SV(_extControl);
+	SV(_extBeforeNmi);
+	SV(_extAfterNmi);
 	SV(_extAddress);
 	SVArray(_extVram, 0x2000);
 	SVArray(_extOam, SnesPpu::SpriteRamSize);
