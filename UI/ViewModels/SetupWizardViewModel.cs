@@ -21,7 +21,6 @@ namespace Mesen.ViewModels
 		[ObservableProperty] public partial string InstallLocation { get; set; }
 
 		[ObservableProperty] public partial bool CreateShortcut { get; set; } = true;
-		[ObservableProperty] public partial bool CheckForUpdates { get; set; } = true;
 		[ObservableProperty] public partial bool IsOsx { get; set; } = OperatingSystem.IsMacOS();
 
 		public SetupWizardViewModel()
@@ -88,7 +87,6 @@ namespace Mesen.ViewModels
 			}
 
 			ConfigManager.Config.DefaultKeyMappings = mappingType;
-			ConfigManager.Config.Preferences.AutomaticallyCheckForUpdates = CheckForUpdates;
 			ConfigManager.Config.Save();
 		}
 

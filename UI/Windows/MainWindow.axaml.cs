@@ -291,10 +291,6 @@ namespace Mesen.Windows
 				Dispatcher.UIThread.Post(() => {
 					cmdLine.LoadFiles();
 					cmdLine.OnAfterInit(this);
-
-					if(ConfigManager.Config.Preferences.AutomaticallyCheckForUpdates) {
-						_model.MainMenu.CheckForUpdate(this, true);
-					}
 				});
 
 				ConfigApi.CheckShaderSupport();

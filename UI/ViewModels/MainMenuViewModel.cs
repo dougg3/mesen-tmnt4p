@@ -1193,10 +1193,6 @@ namespace Mesen.ViewModels
 					OnClick = () => { new CommandLineHelpWindow().ShowCenteredDialog((Control)wnd); }
 				},
 				new MainMenuAction() {
-					ActionType = ActionType.CheckForUpdates,
-					OnClick = () => CheckForUpdate(wnd, false)
-				},
-				new MainMenuAction() {
 					ActionType = ActionType.ReportBug,
 					IsVisible = () => false,
 					OnClick = () => ApplicationHelper.OpenBrowser("https://www.mesen.ca/reportbug/")
@@ -1209,34 +1205,6 @@ namespace Mesen.ViewModels
 					}
 				},
 			};
-		}
-
-		public void CheckForUpdate(Window mainWindow, bool silent)
-		{
-			Task.Run(async () => {
-				UpdatePromptViewModel? updateInfo = await UpdatePromptViewModel.GetUpdateInformation(silent);
-				if(updateInfo == null) {
-					if(!silent) {
-						Dispatcher.UIThread.Post(() => {
-							MesenMsgBox.Show(null, "UpdateDownloadFailed", MessageBoxButtons.OK, MessageBoxIcon.Info);
-						});
-					}
-					return;
-				}
-
-				if(updateInfo.LatestVersion > updateInfo.InstalledVersion) {
-					Dispatcher.UIThread.Post(async () => {
-						UpdatePromptWindow updatePrompt = new UpdatePromptWindow(updateInfo);
-						if(await updatePrompt.ShowCenteredDialog<bool>(mainWindow) == true) {
-							mainWindow.Close();
-						}
-					});
-				} else if(!silent) {
-					Dispatcher.UIThread.Post(() => {
-						MesenMsgBox.Show(null, "MesenUpToDate", MessageBoxButtons.OK, MessageBoxIcon.Info);
-					});
-				}
-			});
 		}
 
 		private async void InstallHdPack(Window wnd)
