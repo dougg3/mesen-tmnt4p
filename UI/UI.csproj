@@ -50,8 +50,8 @@
 	</PropertyGroup>
 	<PropertyGroup>
 		<CFBundleName>Mesen</CFBundleName> <!-- Also defines .app file name -->
-		<CFBundleDisplayName>Mesen</CFBundleDisplayName>
-		<CFBundleIdentifier>ca.mesen</CFBundleIdentifier>
+		<CFBundleDisplayName>mesen-tmnt4p</CFBundleDisplayName>
+		<CFBundleIdentifier>io.github.dougg3.mesen-tmnt4p</CFBundleIdentifier>
 		<CFBundleVersion>1.0.0</CFBundleVersion>
 		<CFBundleShortVersionString>1.0</CFBundleShortVersionString>
 		<CFBundlePackageType>APPL</CFBundlePackageType>

@@ -20,7 +20,7 @@ namespace Mesen.Config
 		private static object _initLock = new object();
 
 		public static string DefaultPortableFolder { get { return Path.GetDirectoryName(Program.ExePath) ?? "./"; } }
-		public static string DefaultDocumentsFolder => Path.Combine(BaseDocumentsFolder, "MesenCE");
+		public static string DefaultDocumentsFolder => Path.Combine(BaseDocumentsFolder, "mesen-tmnt4p");
 
 		private static string BaseDocumentsFolder
 		{
@@ -28,15 +28,6 @@ namespace Mesen.Config
 			{
 				Environment.SpecialFolder folder = OperatingSystem.IsWindows() ? Environment.SpecialFolder.MyDocuments : Environment.SpecialFolder.ApplicationData;
 				return Environment.GetFolderPath(folder, Environment.SpecialFolderOption.Create);
-			}
-		}
-
-		public static string? MesenLegacyDocumentsFolder
-		{
-			get
-			{
-				string path = Path.Combine(BaseDocumentsFolder, "Mesen2");
-				return File.Exists(Path.Combine(path, "settings.json")) ? path : null;
 			}
 		}
 
@@ -198,12 +189,7 @@ namespace Mesen.Config
 					if(File.Exists(portableConfig)) {
 						_homeFolder = portableFolder;
 					} else {
-						string documentsFolder = DefaultDocumentsFolder;
-						if(MesenLegacyDocumentsFolder == null || File.Exists(Path.Combine(documentsFolder, "settings.json"))) {
-							_homeFolder = documentsFolder;
-						} else {
-							_homeFolder = MesenLegacyDocumentsFolder;
-						}
+						_homeFolder = DefaultDocumentsFolder;
 					}
 
 					Directory.CreateDirectory(_homeFolder);
