@@ -232,6 +232,12 @@ jobs:
           ENTITLEMENTS: UI/Mesen.entitlements
           SIGNING_IDENTITY: Mesen
         run: |
+          if [ -z "$CERT_DATA" ]; then
+            # No signing certificate in this repository: ad-hoc signature instead
+            echo "[INFO] No certificate, ad-hoc signing app file"
+            codesign --force --deep --sign - --entitlements "$ENTITLEMENTS" "$APP_NAME"
+            exit 0
+          fi
           # Export certs
           echo "$CERT_DATA" | base64 --decode > /tmp/certs.p12
           # Create keychain
