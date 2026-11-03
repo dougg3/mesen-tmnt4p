@@ -204,6 +204,19 @@ public:
 		return false;
 	}
 
+	void Serialize(Serializer& s) override
+	{
+		BaseControlDevice::Serialize(s);
+
+		//The connected devices have state of their own (buttons, shift register, strobe):
+		//without it, the first frame after a state is loaded reads them as they were before
+		for(int i = 0; i < HubPortCount; i++) {
+			if(_ports[i]) {
+				SVI(_ports[i]);
+			}
+		}
+	}
+
 	void RefreshHubState() override
 	{
 		//Used when the connected devices are updated by code (e.g by the debugger)
