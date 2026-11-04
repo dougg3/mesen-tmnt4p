@@ -99,10 +99,10 @@ namespace Mesen.Config
 
 			//Icon used for shortcuts
 			using(FileStream file = File.Open(Path.Combine(iconFolder, "MesenIcon.png"), FileMode.OpenOrCreate, FileAccess.Write)) {
-				AssetLoader.Open(new Uri("avares://Mesen/Assets/MesenIcon.png")).CopyTo(file);
+				AssetLoader.Open(new Uri("avares://mesen-tmnt4p/Assets/MesenIcon.png")).CopyTo(file);
 			}
 
-			string desktopFile = Path.Combine(desktopFolder, "mesen.desktop");
+			string desktopFile = Path.Combine(desktopFolder, "mesen-tmnt4p.desktop");
 			if(!File.Exists(desktopFile)) {
 				CreateLinuxShortcutFile(desktopFile, mimeTypes);
 			} else {
@@ -152,7 +152,7 @@ namespace Mesen.Config
 			string content =
 				"[Desktop Entry]" + Environment.NewLine +
 				"Type=Application" + Environment.NewLine +
-				"Name=Mesen" + Environment.NewLine +
+				"Name=mesen-tmnt4p" + Environment.NewLine +
 				"Comment=Emulator" + Environment.NewLine +
 				"Keywords=game;emulator;emu" + Environment.NewLine +
 				"Categories=GNOME;GTK;Game;Emulator;" + Environment.NewLine +
@@ -234,12 +234,12 @@ namespace Mesen.Config
 			if(associate) {
 				ProcessModule? mainModule = Process.GetCurrentProcess().MainModule;
 				if(mainModule != null) {
-					Registry.SetValue(@"HKEY_CURRENT_USER\Software\Classes\Mesen\shell\open\command", null, mainModule.FileName + " \"%1\"");
-					Registry.SetValue(key, null, "Mesen");
+					Registry.SetValue(@"HKEY_CURRENT_USER\Software\Classes\mesen-tmnt4p\shell\open\command", null, mainModule.FileName + " \"%1\"");
+					Registry.SetValue(key, null, "mesen-tmnt4p");
 				}
 			} else {
 				object? regKey = Registry.GetValue(key, null, "");
-				if(regKey != null && regKey.Equals("Mesen")) {
+				if(regKey != null && regKey.Equals("mesen-tmnt4p")) {
 					Registry.SetValue(key, null, "");
 				}
 			}

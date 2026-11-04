@@ -5,7 +5,7 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <Nullable>enable</Nullable>
     <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
-    <AssemblyName>Mesen</AssemblyName>
+    <AssemblyName>mesen-tmnt4p</AssemblyName>
     <RootNamespace>Mesen</RootNamespace>
     <StartupObject>Mesen.Program</StartupObject>
     <Version>2.2.1</Version>
@@ -49,14 +49,14 @@
 		<DefineConstants></DefineConstants>
 	</PropertyGroup>
 	<PropertyGroup>
-		<CFBundleName>Mesen</CFBundleName>
+		<CFBundleName>mesen-tmnt4p</CFBundleName>
 		<CFBundleDisplayName>mesen-tmnt4p</CFBundleDisplayName> <!-- Also defines .app file name (Dotnet.Bundle) -->
 		<CFBundleIdentifier>io.github.dougg3.mesen-tmnt4p</CFBundleIdentifier>
 		<CFBundleVersion>1.0.0</CFBundleVersion>
 		<CFBundleShortVersionString>1.0</CFBundleShortVersionString>
 		<CFBundlePackageType>APPL</CFBundlePackageType>
 		<CFBundleSignature>????</CFBundleSignature>
-		<CFBundleExecutable>Mesen</CFBundleExecutable>
+		<CFBundleExecutable>mesen-tmnt4p</CFBundleExecutable>
 		<CFBundleIconFile>MesenIcon.icns</CFBundleIconFile> <!-- Will be copied from output directory -->
 		<NSPrincipalClass>NSApplication</NSPrincipalClass>
 		<NSHighResolutionCapable>true</NSHighResolutionCapable>
@@ -103,7 +103,7 @@
 		<AvaloniaNameGeneratorIsEnabled>False</AvaloniaNameGeneratorIsEnabled>
 	</PropertyGroup>
 	<ItemGroup>
-		<TrimmerRootAssembly Include="Mesen" />
+		<TrimmerRootAssembly Include="mesen-tmnt4p" />
 		<TrimmerRootAssembly Include="AvaloniaEdit" />
 		<TrimmerRootAssembly Include="Dock.Avalonia" />
 		<TrimmerRootAssembly Include="Dock.Model" />

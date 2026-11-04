@@ -57,9 +57,9 @@ jobs:
         uses: actions/upload-artifact@v7
         if: github.event_name != 'pull_request'
         with:
-          name: Mesen (Windows - ${{ matrix.platform.targetframework }}${{ matrix.platform.aotString }})
+          name: mesen-tmnt4p (Windows - ${{ matrix.platform.targetframework }}${{ matrix.platform.aotString }})
           path: |
-            build/TmpReleaseBuild/Mesen.exe
+            build/TmpReleaseBuild/mesen-tmnt4p.exe
 
 
   linux:
@@ -118,8 +118,8 @@ jobs:
         uses: actions/upload-artifact@v7
         if: github.event_name != 'pull_request'
         with:
-          name: Mesen (Linux - ${{ matrix.platform.os }} - ${{ matrix.compiler }})
-          path: bin/linux-${{ matrix.platform.path }}/Release/linux-${{ matrix.platform.path }}/publish/Mesen
+          name: mesen-tmnt4p (Linux - ${{ matrix.platform.os }} - ${{ matrix.compiler }})
+          path: bin/linux-${{ matrix.platform.path }}/Release/linux-${{ matrix.platform.path }}/publish/mesen-tmnt4p
 
   appimage:
     if: ${{ (github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository) }}
@@ -169,8 +169,8 @@ jobs:
         uses: actions/upload-artifact@v7
         if: github.event_name != 'pull_request'
         with:
-          name: Mesen (Linux ${{ matrix.platform.name }} - AppImage)
-          path: Mesen.AppImage
+          name: mesen-tmnt4p (Linux ${{ matrix.platform.name }} - AppImage)
+          path: mesen-tmnt4p.AppImage
 
 
   macos:
@@ -264,5 +264,5 @@ jobs:
         uses: actions/upload-artifact@v7
         if: github.event_name != 'pull_request'
         with:
-          name: Mesen (macOS - ${{ matrix.platform.os }} - ${{ matrix.compiler }})
+          name: mesen-tmnt4p (macOS - ${{ matrix.platform.os }} - ${{ matrix.compiler }})
           path: bin/osx-${{ matrix.platform.arch }}/Release/mesen-tmnt4p.app.zip

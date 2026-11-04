@@ -226,7 +226,7 @@ pgo:
 	./buildPGO.sh
 
 run:
-	$(OUTFOLDER)/$(MESENPLATFORM)/publish/Mesen
+	$(OUTFOLDER)/$(MESENPLATFORM)/publish/mesen-tmnt4p
 
 clean:
 	rm -r -f $(COREOBJ)
