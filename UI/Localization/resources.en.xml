@@ -868,10 +868,11 @@
 		</Form>
 		<Form ID="AboutWindow">
 			<Control ID="wndTitle">About - mesen-tmnt4p</Control>
-			<Control ID="lblName">mesen-tmnt4p, based on Mesen Community Edition</Control>
+			<Control ID="lblName">mesen-tmnt4p</Control>
+			<Control ID="lblBasedOn">Based on Mesen Community Edition {0}</Control>
+			<Control ID="lblUnofficial">This is an unofficial, modified version of Mesen. Please report problems with it at github.com/dougg3/mesen-tmnt4p, not to the Mesen developers.</Control>
 			<Control ID="lblWebsite">Website:</Control>
 			<Control ID="lblLink">github.com/dougg3/mesen-tmnt4p</Control>
-			<Control ID="lblVersion">Version:</Control>
 			<Control ID="lblBuildDate">Build Date:</Control>
 			<Control ID="lblCommitId">Commit ID:</Control>
 			<Control ID="lblRuntimeVersion">Runtime:</Control>

@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using Mesen.Interop;
+using Mesen.Localization;
 using Mesen.Utilities;
 using System;
 using System.Collections.Generic;
@@ -17,6 +18,7 @@ namespace Mesen.Windows
 	public class AboutWindow : MesenWindow
 	{
 		public string Version { get; }
+		public string BasedOn { get; }
 		public string BuildDate { get; }
 		public string RuntimeVersion { get; }
 		public string BuildSha { get; }
@@ -27,6 +29,7 @@ namespace Mesen.Windows
 		public AboutWindow()
 		{
 			Version = EmuApi.GetMesenVersion().ToString();
+			BasedOn = string.Format(ResourceHelper.GetViewLabel(nameof(AboutWindow), "lblBasedOn"), Version);
 			BuildDate = EmuApi.GetMesenBuildDate();
 			RuntimeVersion = ".NET " + Environment.Version;
 			RuntimeVersion += RuntimeFeature.IsDynamicCodeSupported ? " (JIT)" : " (AOT)";
