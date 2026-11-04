@@ -226,7 +226,7 @@ jobs:
       - name: Sign binary
         if: github.event_name != 'pull_request'
         env:
-          APP_NAME: bin/osx-${{ matrix.platform.arch }}/Release/osx-${{ matrix.platform.arch }}/publish/Mesen.app
+          APP_NAME: bin/osx-${{ matrix.platform.arch }}/Release/osx-${{ matrix.platform.arch }}/publish/mesen-tmnt4p.app
           CERT_DATA: ${{ secrets.MACOS_CERTIFICATE }}
           CERT_PASS: ${{ secrets.MACOS_CERTIFICATE_PWD }}
           ENTITLEMENTS: UI/Mesen.entitlements
@@ -255,14 +255,14 @@ jobs:
           echo "[INFO] Signing app file"
           codesign --force --deep --timestamp --keychain macos-build.keychain --options=runtime --entitlements "$ENTITLEMENTS" --sign "$SIGNING_IDENTITY" "$APP_NAME"
 
-      - name: Zip Mesen.app
+      - name: Zip mesen-tmnt4p.app
         if: github.event_name != 'pull_request'
         run: |
-          ditto -c -k --sequesterRsrc --keepParent bin/osx-${{ matrix.platform.arch }}/Release/osx-${{ matrix.platform.arch }}/publish/Mesen.app bin/osx-${{ matrix.platform.arch }}/Release/Mesen.app.zip
+          ditto -c -k --sequesterRsrc --keepParent bin/osx-${{ matrix.platform.arch }}/Release/osx-${{ matrix.platform.arch }}/publish/mesen-tmnt4p.app bin/osx-${{ matrix.platform.arch }}/Release/mesen-tmnt4p.app.zip
 
       - name: Upload Mesen
         uses: actions/upload-artifact@v7
         if: github.event_name != 'pull_request'
         with:
           name: Mesen (macOS - ${{ matrix.platform.os }} - ${{ matrix.compiler }})
-          path: bin/osx-${{ matrix.platform.arch }}/Release/Mesen.app.zip
+          path: bin/osx-${{ matrix.platform.arch }}/Release/mesen-tmnt4p.app.zip

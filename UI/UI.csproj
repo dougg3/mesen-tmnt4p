@@ -49,8 +49,8 @@
 		<DefineConstants></DefineConstants>
 	</PropertyGroup>
 	<PropertyGroup>
-		<CFBundleName>Mesen</CFBundleName> <!-- Also defines .app file name -->
-		<CFBundleDisplayName>mesen-tmnt4p</CFBundleDisplayName>
+		<CFBundleName>Mesen</CFBundleName>
+		<CFBundleDisplayName>mesen-tmnt4p</CFBundleDisplayName> <!-- Also defines .app file name (Dotnet.Bundle) -->
 		<CFBundleIdentifier>io.github.dougg3.mesen-tmnt4p</CFBundleIdentifier>
 		<CFBundleVersion>1.0.0</CFBundleVersion>
 		<CFBundleShortVersionString>1.0</CFBundleShortVersionString>
