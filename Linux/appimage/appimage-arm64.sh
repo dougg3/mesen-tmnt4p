@@ -1,7 +1,6 @@
 #!/bin/bash
 
-export PUBLISHFLAGS="-r linux-arm64 -p:PublishSingleFile=true -p:PublishReadyToRun=true"
-make -j$(nproc) -O LTO=true STATICLINK=true SYSTEM_LIBEVDEV=false
+make -j$(nproc) -O USE_AOT=true LTO=true STATICLINK=true SYSTEM_LIBEVDEV=false
 
 curl -SL https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-aarch64.AppImage -o appimagetool
 

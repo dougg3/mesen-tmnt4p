@@ -1,6 +1,5 @@
 #!/bin/bash
 
-export PUBLISHFLAGS="-r linux-x64 -p:PublishSingleFile=true -p:PublishReadyToRun=true"
 make -j$(nproc) -O USE_AOT=true LTO=true STATICLINK=true SYSTEM_LIBEVDEV=false
 
 curl -SL https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -o appimagetool
